@@ -52,6 +52,18 @@
   .fb-field select:focus,.fb-field input:focus{border-color:var(--signal);}
   .fb-field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6C7E' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
   .fb-count{font-size:12px;color:var(--muted);margin-left:auto;align-self:center;}
+  .adm-crit{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .adm-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .adm-code{font-family:var(--font-title);font-size:12px;color:var(--signal);font-weight:600;}
+  .adm-lbl{font-size:11px;color:var(--muted);margin:9px 0 3px;display:block;letter-spacing:.02em;}
+  .adm-crit input,.adm-crit textarea,.adm-crit select{background:#fff;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13.5px;outline:none;}
+  .adm-crit input:focus,.adm-crit textarea:focus,.adm-crit select:focus{border-color:var(--signal);}
+  .adm-cat{width:100%;} textarea.adm-t{width:100%;min-height:46px;resize:vertical;}
+  .adm-of{display:flex;gap:8px;align-items:center;margin-top:7px;}
+  .adm-of input{flex:1;} .adm-of select{width:140px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235F6C7E' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;}
+  .adm-rm{background:none;border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:6px 10px;cursor:pointer;font-size:12px;font-family:var(--font-title);white-space:nowrap;}
+  .adm-rm:hover{border-color:var(--grave);color:var(--grave);}
+  .adm-addof{margin-top:9px;}
   .rec-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:26px;}
   .rec-etapa{font-family:var(--font-title);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-2);margin:12px 0 2px;}
   .rec-card{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:14px 16px;}
@@ -161,7 +173,7 @@
       <span class="fb-count" id="f-count"></span>
     </div>
     <div id="recHost"></div>
-    <div class="list-head"><h2 id="listTitle">TODAS AS AUDITORIAS</h2><div style="display:flex;gap:8px"><button class="act ghost sm" id="btnRefresh">↻ Atualizar</button><button class="act ghost sm" id="btnExportAll">Exportar tabela geral</button></div></div>
+    <div class="list-head"><h2 id="listTitle">TODAS AS AUDITORIAS</h2><div style="display:flex;gap:8px"><button class="act ghost sm" id="btnAdmin" title="Editar/incluir perguntas (restrito)">⚙ Perguntas</button><button class="act ghost sm" id="btnRefresh">↻ Atualizar</button><button class="act ghost sm" id="btnExportAll">Exportar tabela geral</button></div></div>
     <div id="tableHost"></div>
   </div>
 </div>
@@ -203,6 +215,24 @@
     <div class="status"><span class="badge" id="statusPill">Aberta</span><span class="num" id="statusNote" style="color:var(--muted);font-size:12.5px;"></span></div>
     <div class="foot-actions"><button class="act sm" id="btnExportOne">Exportar tabela</button><button class="act primary sm" id="btnFinalize">Concluir auditoria</button></div>
   </div></div>
+</div>
+
+<!-- ==================== ADMIN (restrito) ==================== -->
+<div id="viewAdmin" class="hidden">
+  <header><div class="head-row">
+    <div class="brand"><h1><span class="dot"></span>Gerenciar perguntas <span style="font-size:12px;color:var(--muted);font-weight:400">· restrito</span></h1><p>Edite ou inclua critérios e ofensores. As alterações valem para toda a equipe.</p></div>
+    <div style="display:flex;gap:8px"><button class="act" id="adm-back">← Painel</button><button class="act primary" id="adm-save">Salvar alterações</button></div>
+  </div></header>
+  <div class="wrap">
+    <div class="filterbar">
+      <div class="fb-field"><label>Modelo</label><select id="adm-modelo"></select></div>
+      <div class="fb-field"><label>Bloco</label><select id="adm-bloco"></select></div>
+      <button class="act ghost sm" id="adm-reset">Restaurar padrão deste bloco</button>
+      <span class="fb-count" id="adm-info"></span>
+    </div>
+    <div id="adm-host"></div>
+    <button class="act" id="adm-addcrit" style="margin-top:14px">+ Nova pergunta neste bloco</button>
+  </div>
 </div>
 
 <dialog id="newDlg">
@@ -253,6 +283,10 @@ if(CLOUD){ try{ firebase.initializeApp(firebaseConfig); fdb=firebase.database();
 const CONTRATOS = ["Localiza","Santander","Itaú","Zamp","AutoZone","TIVIO","Riachuelo","Renner","SCALA"];
 const REGIONAIS = ["Sudeste","Sul","Nordeste","Centro-Oeste","Norte"];
 const COORD_PADRAO = ["Leticia Sposito","Lorenna Khiara","Hugo Silva","Alexandre Oliveira"];
+/* >>> SENHA DO MODO ADMINISTRADOR (editar/incluir perguntas) — troque aqui <<<
+   Trava "leve": impede a operação de editar no dia a dia. Quem abrir o
+   código-fonte consegue ver a senha; segurança total exigiria login/servidor. */
+const ADMIN_PASS = "metodo@2026";
 
 const gr=t=>({t,i:"grave"}), mo=t=>({t,i:"moderado"}), le=t=>({t,i:"leve"});
 
@@ -288,14 +322,14 @@ const MODELS = {
    {id:"qual_proc",label:"Qualidade · Processo",short:"Qualidade\nProcesso",eixo:"Qualidade",tipo:"Processo",bucket:"processo",pEixo:"Qualidade",pEtapa:"Processo",crit:[
      {id:"QR1",cat:"ESTRUTURA, STATUS E PRAZOS NO SISTEMA FAST",t:`Estrutura e status da tarefa no sistema refletem a real situação do processo`,of:[gr(`Status incorreto (ex.: cancelado para atividade em andamento/finalizada) ou fora da ordem cronológica`),mo(`Erro no cadastro da estrutura ou nomes incoerentes na tarefa (Gestor/Coordenador)`)]},
      {id:"QR2",cat:"ESTRUTURA, STATUS E PRAZOS NO SISTEMA FAST",t:`Entregas respeitam o prazo definido ou possuem justificativa válida`,of:[gr(`Atraso na entrega maior que 15 dias, sem justificativa válida`),mo(`Atraso na entrega de até 15 dias, sem justificativa válida`),le(`Atraso na entrega de até 7 dias, sem justificativa válida`)]},
-     {id:"QR3",cat:"ESTRUTURA, STATUS E PRAZOS NO SISTEMA FAST",t:`Diário do processo está atualizado e indicador SGQ (campo ISO) preenchido corretamente`,of:[gr(`Falha ou atraso na atualização do diário do processo`),gr(`Campo ISO não preenchido ou divergente da real situação da entrega`)]},
+     {id:"QR3",cat:"ESTRUTURA, STATUS E PRAZOS NO SISTEMA FAST",t:`A obra possui ata contínua e ela está atualizada`,of:[gr(`Obra não possui ata contínua`),mo(`Ata contínua desatualizada (sem registros recentes)`)]},
      {id:"QR4",cat:"VALIDADE FORMAL DO DOCUMENTO",t:`Documento está na revisão vigente e devidamente assinado`,of:[gr(`Uso de documento em revisão não vigente`),gr(`Documento sem as assinaturas obrigatórias`),mo(`Campo em branco sem indicação de N/A ou traço`)]},
      {id:"QR5",cat:"VALIDADE FORMAL DO DOCUMENTO",t:`Documento é legível, bem apresentado e segue o padrão de nomenclatura`,of:[gr(`Documento ilegível ou com baixa qualidade de digitalização/preenchimento`),le(`Nomenclatura ou formato do arquivo fora do padrão`)]},
      {id:"QR6",cat:"COMUNICAÇÃO ESCRITA E E-MAILS",t:`E-mails de programação/tratativas incluem destinatários e anexos obrigatórios`,of:[gr(`Falta de destinatário obrigatório no e-mail`),mo(`E-mail sem os anexos citados no corpo do texto`)]},
      {id:"QR7",cat:"COMUNICAÇÃO ESCRITA E E-MAILS",t:`Texto do documento é claro, coerente e com justificativas relevantes`,of:[le(`Texto confuso, incoerente ou com erros de digitação/ortografia`),mo(`Falta de justificativa relevante ou de escopo definido no documento`)]},
      {id:"QR8",cat:"RELATÓRIOS DE VISTORIA E REGISTRO FOTOGRÁFICO",t:`Relatório de vistoria contém as informações obrigatórias da etapa`,of:[gr(`Relatório sem resumo das atividades ou sem descrição/percentual de evolução`),mo(`Pontos de atenção sem plano de ação definido (responsável, prazo)`),gr(`Problema grave identificado na vistoria sem nota de inconformidade associada`)]},
      {id:"QR9",cat:"RELATÓRIOS DE VISTORIA E REGISTRO FOTOGRÁFICO",t:`Registro fotográfico tem qualidade e corresponde ao relatado`,of:[mo(`Baixa qualidade das fotos ou legenda sem conexão com a imagem`),gr(`Falta de sinergia entre Relatório de Vistoria e Relatório Fotográfico`)]},
-     {id:"QR10",cat:"RASTREABILIDADE DO DIÁRIO DO PROCESSO",t:`Diário do processo registra os eventos relevantes com evidência que os sustente`,of:[gr(`Ausência de registro de evento relevante (acionamento, paralisação, reprogramação, custo extra, inconformidade)`),gr(`Falta de sinergia entre documentos do processo (dados divergentes)`)]},
+     {id:"QR10",cat:"RASTREABILIDADE DE EVENTOS (RDO / RV / FAST)",t:`Os sistemas RDO, RV ou FAST registram os eventos relevantes da obra (paralisação, alteração de prazo, etc.)`,of:[gr(`Evento relevante da obra (paralisação, alteração de prazo, etc.) sem registro nos sistemas RDO, RV ou FAST`),mo(`Evento registrado, porém sem evidência/documento que o sustente`)]},
      {id:"QR11",cat:"DOCUMENTOS OBRIGATÓRIOS POR ETAPA",t:`Documentos obrigatórios de cada etapa estão completos no processo`,of:[gr(`Documento obrigatório da etapa não localizado no processo`)]}
    ]},
    {id:"seg_desemp",label:"Segurança · Desempenho",short:"Segurança\nDesempenho",eixo:"Segurança",tipo:"Desempenho",bucket:"seguranca",pEixo:"Segurança",pEtapa:"Desempenho",crit:[
@@ -336,9 +370,13 @@ const MODELS = {
  }
 };
 
-const DISCOUNT={grave:1.00,moderado:0.67,leve:0.33};
+const DISCOUNT={grave:1.00,moderado:0.67,leve:0.33}; /* legado — não usado no cálculo */
 const IMPLABEL={grave:"Grave",moderado:"Moderado",leve:"Leve"};
 const BASE=3;
+/* Peso por bloco: cada pergunta vale 3/N (N = nº de perguntas do bloco).
+   Não conforme desconta: leve = 1×(3/N), moderado = 2×(3/N), grave = 3×(3/N). */
+const WFACTOR={leve:1,moderado:2,grave:3};
+function discFor(g,imp){ const n=(g&&g.crit&&g.crit.length)||1; return (BASE/n)*(WFACTOR[imp]||0); }
 const BANDS=[
   {min:2.95,label:"Excelente",color:"#1E9D63",bg:"rgba(30,157,99,.14)"},
   {min:2.6, label:"Ótimo",    color:"#0E9DB6",bg:"rgba(14,157,182,.12)"},
@@ -350,7 +388,7 @@ const STORE_KEY="auditoria_obras_varejo_v1"; /* mantém dados das auditorias de 
 const STATUS_LABEL={aberta:"Aberta",andamento:"Em andamento",concluida:"Concluída"};
 
 /* ---------------------------------------------------------------- */
-let store={audits:{},coordenadores:null,contratos:null};
+let store={audits:{},coordenadores:null,contratos:null,modelos:null};
 let currentId=null, dashFilter="todas", activeTab=null;
 let fContrato="", fDe="", fAte="";
 function filteredList(){
@@ -369,6 +407,16 @@ const fmt=n=>n.toFixed(2).replace('.',',');
 const band=n=>BANDS.find(b=>n>=b.min);
 const MOD=a=>MODELS[a.modelo||"obras"];
 
+/* ===== Perguntas editáveis (modo admin) — snapshot/override dos critérios ===== */
+function modelosSnapshot(){ const o={};
+  ["obras","scala"].forEach(mid=>{ o[mid]={}; MODELS[mid].grupos.forEach(g=>{ o[mid][g.id]=g.crit.map(c=>({id:c.id,cat:c.cat||"",sub:c.sub||"",t:c.t,of:(c.of||[]).map(x=>({t:x.t,i:x.i}))})); }); });
+  return o; }
+const MODELOS_DEFAULT = modelosSnapshot();
+function applyModelosOverride(ov){
+  ["obras","scala"].forEach(mid=>{ MODELS[mid].grupos.forEach(g=>{ const d=MODELOS_DEFAULT[mid][g.id]||[]; g.crit=d.map(c=>({id:c.id,cat:c.cat,sub:c.sub,t:c.t,of:c.of.map(x=>({t:x.t,i:x.i}))})); }); });
+  if(ov){ ["obras","scala"].forEach(mid=>{ if(!ov[mid])return; MODELS[mid].grupos.forEach(g=>{ const arr=ov[mid][g.id]; if(Array.isArray(arr)&&arr.length) g.crit=arr.map(c=>({id:c.id,cat:c.cat||"",sub:c.sub||"",t:c.t,of:(c.of||[]).map(x=>({t:x.t,i:x.i}))})); }); }); }
+}
+
 let saveTimer=null;
 /* ---- Firebase Realtime Database (cada auditoria é um JSON em auditorias_app/audits/<id>) ---- */
 const FB_ROOT="auditorias_app";
@@ -376,11 +424,13 @@ async function fbLoadAll(){ const snap=await fdb.ref(FB_ROOT).once("value"); con
   if(val.audits) Object.values(val.audits).forEach(s=>{ try{ const a=JSON.parse(s); out.audits[a.id]=a; }catch(e){} });
   if(val.coordenadores){ try{ out.coordenadores=JSON.parse(val.coordenadores); }catch(e){} }
   if(val.contratos){ try{ out.contratos=JSON.parse(val.contratos); }catch(e){} }
+  if(val.modelos){ try{ out.modelos=JSON.parse(val.modelos); }catch(e){} }
   return out; }
 async function fbSetAudit(a){ await fdb.ref(FB_ROOT+"/audits/"+a.id).set(JSON.stringify(a)); }
 async function fbDelAudit(id){ await fdb.ref(FB_ROOT+"/audits/"+id).remove(); }
 async function fbSetCoords(c){ await fdb.ref(FB_ROOT+"/coordenadores").set(JSON.stringify(c)); }
 async function fbSetContratos(c){ await fdb.ref(FB_ROOT+"/contratos").set(JSON.stringify(c)); }
+async function fbSetModelos(m){ await fdb.ref(FB_ROOT+"/modelos").set(JSON.stringify(m)); }
 function fbSubscribe(){ fdb.ref(FB_ROOT+"/audits").on("value",snap=>{
   const val=snap.val()||{}; const ids=new Set();
   Object.values(val).forEach(s=>{ try{ const a=JSON.parse(s); ids.add(a.id); if(a.id!==currentId) store.audits[a.id]=a; }catch(e){} });
@@ -398,12 +448,14 @@ async function loadStore(){
   }catch(e){ if(CLOUD) alert("Não consegui conectar ao Firebase. Confira a databaseURL e as regras do Realtime Database."); }
   if(!store.coordenadores) store.coordenadores=COORD_PADRAO.slice();
   if(!store.contratos) store.contratos=CONTRATOS.slice();
+  applyModelosOverride(store.modelos);
   Object.values(store.audits).forEach(a=>{ if(!a.modelo) a.modelo="obras"; }); /* migração */ }
 
 function scheduleSave(){ flashSaving(); clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ if(currentId) persistAudit(currentId); else persistCoords(); },450); }
 async function persistAudit(id){ const a=store.audits[id]; if(!a)return; try{ if(CLOUD) await fbSetAudit(a); else await localSaveAll(); flashSaved(CLOUD?"Salvo na nuvem · compartilhado":"Progresso salvo automaticamente"); }catch(e){ flashSaved("Não foi possível salvar",true); } }
 async function persistCoords(){ try{ if(CLOUD) await fbSetCoords(store.coordenadores); else await localSaveAll(); }catch(e){} }
 async function persistContratos(){ try{ if(CLOUD) await fbSetContratos(store.contratos); else await localSaveAll(); }catch(e){} }
+async function persistModelos(){ try{ if(CLOUD) await fbSetModelos(store.modelos); else await localSaveAll(); }catch(e){} }
 async function persistDelete(id){ try{ if(CLOUD) await fbDelAudit(id); else await localSaveAll(); }catch(e){} }
 function flashSaving(){ const i=$("#savedInd"); if(!i)return; i.classList.remove("on"); $("#savedTxt").textContent="Salvando…"; }
 function flashSaved(t,err){ const i=$("#savedInd"); if(!i)return; i.classList.toggle("on",!err); $("#savedTxt").textContent=t; }
@@ -416,7 +468,7 @@ function allCrit(a){ return grupos(a).flatMap(g=>g.crit); }
 function cell(a,cid,p){ if(!a.answers[cid]) a.answers[cid]={}; if(!a.answers[cid][p]) a.answers[cid][p]={v:null,of:null,obs:""}; return a.answers[cid][p]; }
 function getCell(a,cid,p){ return (a.answers[cid]&&a.answers[cid][p])||{v:null,of:null,obs:""}; }
 
-function grupoNota(a,g,p){ let d=0; g.crit.forEach(c=>{ const x=getCell(a,c.id,p); if(x.v==="nc"&&x.of!=null&&c.of[x.of]) d+=DISCOUNT[c.of[x.of].i]; }); return Math.max(0,BASE-d); }
+function grupoNota(a,g,p){ let d=0; g.crit.forEach(c=>{ const x=getCell(a,c.id,p); if(x.v==="nc"&&x.of!=null&&c.of[x.of]) d+=discFor(g,c.of[x.of].i); }); return Math.max(0,BASE-d); }
 function notasPapel(a,p){ const m={}; let sum=0; grupos(a).forEach(g=>{ const n=grupoNota(a,g,p); m[g.id]=n; sum+=n; }); return {grupos:m,final:sum/grupos(a).length}; }
 function notaGeral(a){ const ps=papeis(a); return ps.reduce((s,p)=>s+notasPapel(a,p.k).final,0)/ps.length; }
 function totalCells(a){ return allCrit(a).length*papeis(a).length; }
@@ -425,28 +477,42 @@ function pendingOf(a){ let n=0; allCrit(a).forEach(c=>papeis(a).forEach(p=>{ con
 function statusOf(a){ if(a.finalized) return "concluida"; return answeredCells(a)===0?"aberta":"andamento"; }
 function ref(a){ if((a.modelo||"obras")==="scala") return a.meta.contrato||a.meta.obra||a.meta.gestor||"SCALA"; return a.meta.contrato||a.meta.gestor||MOD(a).nome; }
 
-/* ==== Recorrências: por eixo (Qualidade/Segurança) e etapa (Desempenho/Processo) ==== */
+/* ==== Recorrências: Obras (por eixo) e SCALA separados, para que o SCALA
+       não fique fora do top-5 por competir com o volume de obras ==== */
 function recorrencias(){
-  const acc={Qualidade:{Desempenho:{},Processo:{}},"Segurança":{Desempenho:{},Processo:{}}};
-  filteredList().forEach(a=>{ MOD(a).grupos.forEach(g=>{ const e=g.pEixo||"Qualidade", et=g.pEtapa||"Desempenho"; if(!acc[e]||!acc[e][et])return;
-    g.crit.forEach(c=>{ papeis(a).forEach(p=>{ const x=getCell(a,c.id,p.k); if(x.v==="nc") acc[e][et][c.t]=(acc[e][et][c.t]||0)+1; }); }); }); });
+  const obras={Qualidade:{Desempenho:{},Processo:{}},"Segurança":{Desempenho:{},Processo:{}}};
+  const scala={Desempenho:{},Processo:{}};
+  filteredList().forEach(a=>{ const isScala=(a.modelo==="scala");
+    MOD(a).grupos.forEach(g=>{ const e=g.pEixo||"Qualidade", et=g.pEtapa||"Desempenho";
+      const bucket = isScala ? scala[et] : (obras[e]&&obras[e][et]);
+      if(!bucket) return;
+      g.crit.forEach(c=>{ papeis(a).forEach(p=>{ const x=getCell(a,c.id,p.k); if(x.v==="nc") bucket[c.t]=(bucket[c.t]||0)+1; }); });
+    }); });
   const top=o=>Object.entries(o).sort((x,y)=>y[1]-x[1]).slice(0,5);
-  return {Qualidade:{Desempenho:top(acc.Qualidade.Desempenho),Processo:top(acc.Qualidade.Processo)},
-          "Segurança":{Desempenho:top(acc["Segurança"].Desempenho),Processo:top(acc["Segurança"].Processo)}};
+  return {
+    obras:{Qualidade:{Desempenho:top(obras.Qualidade.Desempenho),Processo:top(obras.Qualidade.Processo)},
+           "Segurança":{Desempenho:top(obras["Segurança"].Desempenho),Processo:top(obras["Segurança"].Processo)}},
+    scala:{Desempenho:top(scala.Desempenho),Processo:top(scala.Processo)}
+  };
 }
 function renderRecorrencias(){
   const host=$("#recHost"); if(!host)return; const R=recorrencias();
-  const eixos=[["Qualidade","#0E9DB6"],["Segurança","#C2781C"]];
-  const any=eixos.some(([e])=>R[e].Desempenho.length||R[e].Processo.length);
-  if(!any){ host.innerHTML=""; return; }
   const sub=(list,col)=> list.length
     ? list.map(([t,n])=>`<div class="rec-item"><span class="rec-cnt" style="background:${col}">${n}</span><span class="rec-txt">${t}</span></div>`).join("")
     : `<div class="rec-empty">Sem não conformidades registradas.</div>`;
+  const obrasEixos=[["Qualidade","#0E9DB6"],["Segurança","#C2781C"]];
+  const hasObras=obrasEixos.some(([e])=>R.obras[e].Desempenho.length||R.obras[e].Processo.length);
+  const hasScala=R.scala.Desempenho.length||R.scala.Processo.length;
+  if(!hasObras && !hasScala){ host.innerHTML=""; return; }
   let h=`<div class="rec-title">NÃO CONFORMIDADES MAIS RECORRENTES</div><div class="rec-grid">`;
-  eixos.forEach(([e,col])=>{ h+=`<div class="rec-card"><div class="rec-h" style="color:${col}">${e}</div>`
-    +`<div class="rec-etapa">Desempenho</div>${sub(R[e].Desempenho,col)}`
-    +`<div class="rec-etapa">Processo</div>${sub(R[e].Processo,col)}`
+  if(hasObras) obrasEixos.forEach(([e,col])=>{ h+=`<div class="rec-card"><div class="rec-h" style="color:${col}">Obras · ${e}</div>`
+    +`<div class="rec-etapa">Desempenho</div>${sub(R.obras[e].Desempenho,col)}`
+    +`<div class="rec-etapa">Processo</div>${sub(R.obras[e].Processo,col)}`
     +`</div>`; });
+  if(hasScala){ const scol="#5B5BD6"; h+=`<div class="rec-card"><div class="rec-h" style="color:${scol}">SCALA</div>`
+    +`<div class="rec-etapa">Desempenho</div>${sub(R.scala.Desempenho,scol)}`
+    +`<div class="rec-etapa">Processo</div>${sub(R.scala.Processo,scol)}`
+    +`</div>`; }
   host.innerHTML=h+`</div>`;
 }
 
@@ -523,7 +589,7 @@ function renderCrit(a){
           <button class="vbtn" data-v="conforme">Conforme</button><button class="vbtn" data-v="na">N.A.</button><button class="vbtn" data-v="nc">Não conf.</button>
         </div>
         <div class="nc-extra">
-          <select class="of-sel"><option value="">Selecione o ofensor…</option>${c.of.map((o,i)=>`<option value="${i}">${o.t} — ${IMPLABEL[o.i]} (−${fmt(DISCOUNT[o.i])})</option>`).join("")}</select>
+          <select class="of-sel"><option value="">Selecione o ofensor…</option>${c.of.map((o,i)=>`<option value="${i}">${o.t} — ${IMPLABEL[o.i]} (−${fmt(discFor(g,o.i))})</option>`).join("")}</select>
           <textarea class="of-obs" placeholder="Observação da não conformidade">${x.obs||""}</textarea>
         </div>
       </div>`;
@@ -591,11 +657,12 @@ function tabelaNotas(M,list){
   return L;
 }
 function tabelaOfensores(M,list){
-  let L=["TABELA DE OFENSORES — "+M.nome,"Referência;Avaliado;Papel;Categoria;Critério;Verdito;Ofensor;Impacto;Desconto;Observação"]; let any=false;
-  list.forEach(a=>{ M.grupos.forEach(g=>g.crit.forEach(c=>{ papeis(a).forEach(p=>{ const x=getCell(a,c.id,p.k);
+  let L=["TABELA DE OFENSORES — "+M.nome,"Referência;Avaliado;Papel;Eixo;Etapa;Categoria;Critério;Verdito;Ofensor;Impacto;Desconto;Observação"]; let any=false;
+  list.forEach(a=>{ M.grupos.forEach(g=>{ const eixo=g.pEixo||g.eixo||"", etapa=g.pEtapa||(g.tipo&&g.tipo!=="—"?g.tipo:"");
+    g.crit.forEach(c=>{ papeis(a).forEach(p=>{ const x=getCell(a,c.id,p.k);
     if(x.v==="nc"){ any=true; const o=(x.of!=null&&c.of[x.of])?c.of[x.of]:null;
-      L.push([esc(ref(a)),esc(p.nome),p.lbl,esc(c.cat),esc(c.t),"Não conforme",esc(o?o.t:"(sem ofensor)"),o?IMPLABEL[o.i]:"",o?fmt(DISCOUNT[o.i]):"",esc(x.obs)].join(";")); }
-  }); })); });
+      L.push([esc(ref(a)),esc(p.nome),p.lbl,esc(eixo),esc(etapa),esc(c.cat),esc(c.t),"Não conforme",esc(o?o.t:"(sem ofensor)"),o?IMPLABEL[o.i]:"",o?fmt(discFor(g,o.i)):"",esc(x.obs)].join(";")); }
+  }); }); }); });
   if(!any) L.push("(nenhuma não conformidade registrada)");
   return L;
 }
@@ -606,6 +673,55 @@ function csvAll(){ const list=Object.values(store.audits).sort((x,y)=>y.createdA
     out=out.concat(tabelaNotas(M,sub)).concat([""]).concat(tabelaOfensores(M,sub)); });
   return out.join("\n"); }
 function openExport(title,text,fname){ $("#expTitle").textContent=title; $("#expArea").value=text; $("#expDlg").dataset.fname=fname; $("#expDlg").showModal(); }
+
+/* ================= ADMIN: editar / incluir perguntas ================= */
+let admDraft=null, admModelo="obras", admBloco=null;
+const MODEL_LABEL={obras:"Gerenciamento de Obras (Varejo)",scala:"SCALA — Datacenter"};
+const admList=()=> (admDraft[admModelo] && admDraft[admModelo][admBloco]) || [];
+function admGroups(){ return MODELS[admModelo].grupos; }
+function admFillBloco(){ const sel=$("#adm-bloco"); sel.innerHTML=admGroups().map(g=>`<option value="${g.id}">${g.label}</option>`).join("");
+  if(!admGroups().some(g=>g.id===admBloco)) admBloco=admGroups()[0].id; sel.value=admBloco; }
+function admNewId(){ const list=admList(); let prefix="N";
+  for(const c of list){ const m=(c.id||"").match(/^([A-Za-z]+)/); if(m){ prefix=m[1]; break; } }
+  let max=0; list.forEach(c=>{ const m=(c.id||"").match(/(\d+)$/); if(m) max=Math.max(max,+m[1]); });
+  const all=new Set(list.map(c=>c.id)); let id=prefix+(max+1); while(all.has(id)){ max++; id=prefix+(max+1); } return id; }
+function openAdmin(){
+  const p=prompt("Senha de administrador:"); if(p===null) return;
+  if(p!==ADMIN_PASS){ alert("Senha incorreta."); return; }
+  admDraft=modelosSnapshot(); admModelo="obras"; admBloco=MODELS.obras.grupos[0].id;
+  $("#viewDash").classList.add("hidden"); $("#viewAudit").classList.add("hidden"); $("#viewAdmin").classList.remove("hidden"); window.scrollTo(0,0);
+  fillSelect($("#adm-modelo"),["obras","scala"].map(m=>MODEL_LABEL[m])); $("#adm-modelo").selectedIndex=0;
+  admFillBloco(); admRender();
+}
+function admRender(){
+  const host=$("#adm-host"); const list=admList(); const n=list.length; const unit=n?(BASE/n):0;
+  $("#adm-info").textContent=`${n} pergunta(s) · peso: leve −${fmt(unit)}, moderado −${fmt(unit*2)}, grave −${fmt(unit*3)}`;
+  const esc2=s=>String(s==null?"":s).replace(/"/g,'&quot;');
+  const impOpts=imp=>["leve","moderado","grave"].map(k=>`<option value="${k}" ${k===imp?"selected":""}>${IMPLABEL[k]}</option>`).join("");
+  host.innerHTML = list.length ? list.map((c,ci)=>`
+    <div class="adm-crit">
+      <div class="adm-top"><span class="adm-code">${c.id}</span><button class="adm-rm" data-act="delc" data-ci="${ci}">Remover pergunta</button></div>
+      <label class="adm-lbl">Categoria (cabeçalho)</label>
+      <input class="adm-cat" data-k="cat" data-ci="${ci}" value="${esc2(c.cat)}" placeholder="Ex.: ESTRUTURA, STATUS E PRAZOS">
+      <label class="adm-lbl">Pergunta / critério</label>
+      <textarea class="adm-t" data-k="t" data-ci="${ci}" placeholder="Texto do critério">${esc2(c.t)}</textarea>
+      <label class="adm-lbl">Ofensores (motivos da não conformidade)</label>
+      ${(c.of||[]).map((o,oi)=>`<div class="adm-of">
+         <input data-k="oft" data-ci="${ci}" data-oi="${oi}" value="${esc2(o.t)}" placeholder="Descrição do ofensor">
+         <select data-k="ofi" data-ci="${ci}" data-oi="${oi}">${impOpts(o.i)}</select>
+         <button class="adm-rm" data-act="delof" data-ci="${ci}" data-oi="${oi}" title="Remover ofensor">×</button>
+       </div>`).join("")}
+      <button class="act ghost sm adm-addof" data-act="addof" data-ci="${ci}">+ Ofensor</button>
+    </div>`).join("") : `<div class="empty"><p>Nenhuma pergunta neste bloco. Use "+ Nova pergunta neste bloco".</p></div>`;
+  host.querySelectorAll("[data-k]").forEach(el=>{ const ci=+el.dataset.ci,k=el.dataset.k;
+    el.oninput=el.onchange=()=>{ const c=admList()[ci]; if(!c)return;
+      if(k==="cat")c.cat=el.value; else if(k==="t")c.t=el.value;
+      else if(k==="oft")c.of[+el.dataset.oi].t=el.value; else if(k==="ofi")c.of[+el.dataset.oi].i=el.value; }; });
+  host.querySelectorAll("[data-act]").forEach(b=>{ b.onclick=()=>{ const ci=+b.dataset.ci,act=b.dataset.act;
+    if(act==="delc"){ if(confirm("Remover esta pergunta?")){ admList().splice(ci,1); admRender(); } }
+    else if(act==="addof"){ admList()[ci].of.push({t:"",i:"leve"}); admRender(); }
+    else if(act==="delof"){ const c=admList()[ci]; if(c.of.length<=1){ alert("A pergunta precisa de ao menos um ofensor."); return; } c.of.splice(+b.dataset.oi,1); admRender(); } }; });
+}
 
 /* ================= NEW / INIT ================= */
 function syncNewFields(){ const m=$("#n-modelo").value; const M=MODELS[m];
@@ -655,6 +771,21 @@ async function init(){
   $("#btnExportOne").onclick=()=>{ const a=store.audits[currentId]; openExport("Exportar tabela da auditoria",csvOne(a),"auditoria-"+(ref(a)||"metodo").replace(/\W+/g,"-")+".csv"); };
   $("#btnRefresh").onclick=async()=>{ $("#btnRefresh").textContent="Atualizando…"; await loadStore(); renderDash(); $("#btnRefresh").textContent="↻ Atualizar"; };
   $("#btnExportAll").onclick=()=>openExport("Exportar tabela geral",csvAll(),"painel-auditorias-metodo.csv");
+  $("#btnAdmin").onclick=openAdmin;
+  $("#adm-modelo").onchange=()=>{ admModelo=["obras","scala"][$("#adm-modelo").selectedIndex]; admFillBloco(); admRender(); };
+  $("#adm-bloco").onchange=()=>{ admBloco=$("#adm-bloco").value; admRender(); };
+  $("#adm-addcrit").onclick=()=>{ if(!admDraft)return; const list=admList(); const lastCat=list.length?list[list.length-1].cat:""; list.push({id:admNewId(),cat:lastCat,sub:"",t:"",of:[{t:"",i:"leve"}]}); admRender(); window.scrollTo(0,document.body.scrollHeight); };
+  $("#adm-reset").onclick=()=>{ if(!admDraft)return; if(!confirm("Restaurar as perguntas padrão deste bloco? As edições feitas neste bloco serão descartadas."))return; admDraft[admModelo][admBloco]=MODELOS_DEFAULT[admModelo][admBloco].map(c=>({id:c.id,cat:c.cat,sub:c.sub,t:c.t,of:c.of.map(x=>({t:x.t,i:x.i}))})); admRender(); };
+  $("#adm-back").onclick=()=>{ if(!confirm("Sair sem salvar? As alterações não salvas serão descartadas."))return; admDraft=null; $("#viewAdmin").classList.add("hidden"); $("#viewDash").classList.remove("hidden"); renderDash(); };
+  $("#adm-save").onclick=async()=>{ if(!admDraft)return;
+    for(const mid of ["obras","scala"]) for(const gid in admDraft[mid]){ for(const c of admDraft[mid][gid]){
+      if(!(c.t||"").trim()){ alert("Há pergunta sem texto no bloco selecionado. Preencha ou remova antes de salvar."); return; }
+      if(!c.of.length){ alert("A pergunta "+c.id+" está sem ofensores."); return; }
+      for(const o of c.of){ if(!(o.t||"").trim()){ alert("Há ofensor sem descrição na pergunta "+c.id+"."); return; } } } }
+    store.modelos=admDraft; applyModelosOverride(store.modelos); await persistModelos();
+    admDraft=null; alert("Perguntas salvas e aplicadas para toda a equipe.");
+    $("#viewAdmin").classList.add("hidden"); $("#viewDash").classList.remove("hidden"); renderDash();
+  };
   $("#expClose").onclick=()=>$("#expDlg").close();
   $("#expCopy").onclick=async()=>{ const t=$("#expArea"); t.select(); try{ await navigator.clipboard.writeText(t.value); }catch(e){ document.execCommand("copy"); } $("#expCopy").textContent="Copiado!"; setTimeout(()=>$("#expCopy").textContent="Copiar",1500); };
   $("#expDownload").onclick=()=>{ try{ const blob=new Blob(["\ufeff"+$("#expArea").value],{type:"text/csv;charset=utf-8"}); const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=$("#expDlg").dataset.fname||"export.csv"; a.click(); URL.revokeObjectURL(u); }catch(e){ alert("Use o botão Copiar se o download não abrir."); } };
